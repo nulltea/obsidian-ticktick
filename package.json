@@ -1,5 +1,5 @@
 {
-	"name": "obsidian-sample-plugin",
+	"name": "obsidian-ticktick",
 	"version": "1.0.1",
 	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
 	"main": "main.js",
@@ -18,7 +18,12 @@
 		"builtin-modules": "^3.2.0",
 		"esbuild": "0.13.12",
 		"obsidian": "latest",
+		"obsidian-dataview": "^0.4.25",
 		"tslib": "2.3.1",
 		"typescript": "4.4.4"
+	},
+	"dependencies": {
+		"bson-objectid": "^2.0.3",
+		"ticktick-api": "github:RayBB/node-ticktick-api"
 	}
 }

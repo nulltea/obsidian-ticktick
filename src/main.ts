@@ -1,4 +1,4 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, request } from 'obsidian';
+import {App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, request, Tasks} from 'obsidian';
 import { getAPI } from "obsidian-dataview";
 import {Task} from "obsidian-dataview/lib/data/value";
 
@@ -13,6 +13,7 @@ interface ObsidianTickTickSettings {
 	username?: string;
 	password?: string;
 	token?: string;
+	syncedTasks?: []
 }
 
 const DEFAULT_SETTINGS: ObsidianTickTickSettings = { }
@@ -24,8 +25,9 @@ export default class ObsidianTickTick extends Plugin {
 		await this.loadSettings();
 
 		const ribbonIconEl = this.addRibbonIcon('checkmark', 'TickTick', (evt: MouseEvent) => {
-			let tasks = getAPI(this.app)?.pages("#ticktick").forEach(async page => {
-				let tasks = page.file.tasks.values as Task[];
+			const dataview = getAPI(this.app);
+			let tasks = dataview?.pages("#ticktick").forEach(async page => {
+				let tasks = dataview.array(page.file.tasks.values as Task[]);
 
 				console.log("file", page.file)
 				console.log("tasks", tasks)
@@ -41,16 +43,17 @@ export default class ObsidianTickTick extends Plugin {
 					}
 				});
 
-				let items = tasks.map<TickTickItem>((t) => ({
-					id: ObjectID(),
+				let items = tasks.where(t => t.section.subpath == "Action items").map<TickTickItem>((t) => ({
+					id: ObjectID().toHexString(),
 					title: t.text,
 					status: t.completed,
-				}));
+				})).array();
 
-				await ticktick.addTask({
+				let added = await ticktick.addTasks([{
 					title: page.file.name,
 					items: items,
-				})
+					status: false,
+				}]);
 			});
 		});
 

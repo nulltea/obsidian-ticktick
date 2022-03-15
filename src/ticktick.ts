@@ -13,21 +13,24 @@ export type TickTickArgs = {
 export type TickTickTask = {
 	content?: string,
 	deleted?: number,
-	id?: ObjectID,
+	id?: string,
 	isAllDay?: boolean,
 	isDirty?: boolean,
 	items?: TickTickItem[],
 	local?: boolean,
+	createdTime?: Date,
 	modifiedTime?: Date,
 	priority?: number,
 	progress?: number,
-	projectId?: ObjectID,
+	projectId?: string,
 	title: string,
-	sortOrder?: number
+	sortOrder?: number,
+	timeZone?: string,
+	status: boolean
 }
 
 export type TickTickItem = {
-	id?: ObjectID,
+	id?: string,
 	status: boolean,
 	title: string,
 	sortOrder?: number
@@ -90,48 +93,81 @@ class TickTick {
 	}
 
 	//the default list will be inbox
-	async addTask(taskArgs: TickTickTask) {
+	async addTasks(tasksArgs: TickTickTask[]): Promise<[string, string][]> {
+		let res = new Set<[string, string]>();
+		let toAdd = new Set()
+
+		for (let task of tasksArgs) {
+			let items = new Set();
+			for (let item of task.items) {
+				items.add({
+					id: ObjectID().toHexString(),
+					title: item.title,
+					status: (item.status) ? 1 : 0,
+				})
+			}
+
+			toAdd.add({
+				assignee: null,
+				content: (task.content) ? task.content : "",
+				createdTime: (task.createdTime) ? task.createdTime.toISOString().replace("Z", "+0000") : new Date().toISOString().replace("Z", "+0000"),
+				kind: null,
+				dueDate: null,
+				// dueDate: (task.dueDate) ? task.dueDate : null,
+				items: [...items],
+				exDate: [],
+				id: (task.id) ? task.id : ObjectID().toHexString(),
+				isFloating: false,
+				modifiedTime: (task.modifiedTime) ? task.modifiedTime.toISOString().replace("Z", "+0000") : new Date().toISOString().replace("Z", "+0000"), //"2017-08-12T17:04:51.982+0000",
+				priority: (task.priority) ? task.priority : 0,
+				progress: (task.progress) ? task.progress : 0,
+				projectId: (task.projectId) ? task.projectId : this.inboxId,
+				reminders: [],
+				// reminder: (task.reminder) ? task.reminder : null,
+				// reminders: (task.reminders) ? task.reminders : [{id:ObjectID(),trigger:"TRIGGER:PT0S"}],
+				// remindTime: (task.remindTime) ? task.remindTime : null,
+				// repeatFlag: (task.repeatFlag) ? task.repeatFlag : null,
+				sortOrder: (task.sortOrder) ? task.sortOrder : this.sortOrder,
+				startDate: null,
+				// startDate: (task.startDate) ? task.startDate : null,
+				status: (task.status) ? task.status : 0,
+				// tags: (task.tags) ? task.tags : [],
+				tags: [],
+				timeZone: (task.timeZone) ? task.timeZone : "Europe/Kiev", // This needs to be updated to grab dynamically
+				title: task.title,
+			})
+			res.add([task.title, task.id])
+		}
+
+		let req: any = {
+			add: [...toAdd],
+			addAttachments: [],
+			delete: [],
+			deleteAttachments: [],
+			update: [],
+			updateAttachments: [],
+		};
+
+		console.log(req)
+
 		let resp = await request({
 			method: "POST",
-			url: 'https://ticktick.com/api/v2/task',
+			url: 'https://api.ticktick.com/api/v2/batch/task',
 			headers: {
 				'Content-Type': 'application/json',
 				'Origin': 'https://ticktick.com',
 				'cookie': 't=' + this.token
 			},
-			body: JSON.stringify({
-				//assignee: (taskArgs.assignee) ? taskArgs.assignee : null,
-				content: (taskArgs.content) ? taskArgs.content : "",
-				deleted: (taskArgs.deleted) ? taskArgs.deleted : 0,
-				//dueDate: (taskArgs.dueDate) ? taskArgs.dueDate : null,
-				id: (taskArgs.id) ? taskArgs.id : ObjectID(),
-				isAllDay: (taskArgs.isAllDay) ? taskArgs.isAllDay : null,
-				isDirty: (taskArgs.isDirty) ? taskArgs.isDirty : true,
-				items: (taskArgs.items) ? taskArgs.items : [],
-				local: (taskArgs.local) ? taskArgs.local : true,
-				modifiedTime: (taskArgs.modifiedTime) ? taskArgs.modifiedTime.toISOString().replace("Z", "+0000") : new Date().toISOString().replace("Z", "+0000"), //"2017-08-12T17:04:51.982+0000",
-				priority: (taskArgs.priority) ? taskArgs.priority :0,
-				progress: (taskArgs.progress) ? taskArgs.progress : 0,
-				projectId: (taskArgs.projectId) ? taskArgs.projectId : this.inboxId,
-				// reminder: (taskArgs.reminder) ? taskArgs.reminder : null,
-				// reminders: (taskArgs.reminders) ? taskArgs.reminders : [{id:ObjectID(),trigger:"TRIGGER:PT0S"}],
-				// remindTime: (taskArgs.remindTime) ? taskArgs.remindTime : null,
-				// repeatFlag: (taskArgs.repeatFlag) ? taskArgs.repeatFlag : null,
-				// sortOrder: (taskArgs.sortOrder) ? taskArgs.sortOrder : this.sortOrder,
-				// startDate: (taskArgs.startDate) ? taskArgs.startDate : null,
-				// status: (taskArgs.status) ? taskArgs.status : 0,
-				// tags: (taskArgs.tags) ? taskArgs.tags : [],
-				// timeZone: (taskArgs.timeZone) ? taskArgs.timeZone : "America/New_York", // This needs to be updated to grab dynamically
-				title: taskArgs.title,
-			})
+			body: JSON.stringify(req)
 		})
 
 		console.log(resp);
 
 		let body = JSON.parse(resp);
 
-		console.log("Added: " + taskArgs.title);
 		this.sortOrder = body.sortOrder - 1;
+
+		return [...res];
 	}
 }
 
